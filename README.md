@@ -1,4 +1,5 @@
 # UNet-PyTorch
+<<<<<<< HEAD
 
 This is a PyTorch implementation of the U-Net architecture.
 
@@ -73,3 +74,6 @@ A Vectorized implementation of the weighted function is in `celldata.py`.
     └── unet100_0.png
 ```
 <!-- # Results -->
+=======
+PyTorch implementation of the U-Net architecture
+>>>>>>> fc8af7b37b4300ebee4d700400927262d70283a6
