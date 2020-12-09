@@ -1,5 +1,7 @@
 # UNet-PyTorch
 
+![alt text](https://github.com/hayashimasa/UNet-PyTorch/blob/main/visualization/unet100.png?raw=true)
+
 This is a PyTorch implementation of the U-Net architecture.
 
 "U-Net: Convolutional Networks for Biomedical Image Segmentation" by Olaf Ronneberger, Philipp Fischer, and Thomas Brox (2015)
