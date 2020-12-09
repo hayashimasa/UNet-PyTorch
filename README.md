@@ -28,7 +28,7 @@ The corresponding binary labels are provided in an in-out fashion, i.e. white fo
 
 The network has a symmetric encoder-decoder structure. Images are first downsampled through a series of convolutional blaocks consists of convolutional, non-linear activation, and max-pooling layers. The downsampled featured map is then symmetrically upsampled by a series of transposed convolutions in order to obatin a high resolution feature map that is close to the size of the original images. The most interesting feature of the architecture is the concatenation of high resolution feature maps from the contracting path and the corresponding upsampled feature maps from the expanding path. This design allows the network to leverage both high and low resolution information to learn the structure of the image. In order to increase efficiency and flexibility, a convolutional layer instead of a fully connected layer is used to output the final prediction. Each convolutional filter corresponding to an object classes.
 
-![alt text](https://github.com/hayashimasa/UNet-PyTorch/blob/main/graphs/Unet100.png?raw=true)
+![alt text](https://github.com/hayashimasa/UNet-PyTorch/blob/main/graphs/unet_architecture.png?raw=true)
 
 The implementation of the network architecture is in `unet.py`.
 
