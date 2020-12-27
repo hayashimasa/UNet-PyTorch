@@ -1,6 +1,6 @@
 # UNet-PyTorch
 
-![alt text](https://github.com/hayashimasa/UNet-PyTorch/blob/main/visualization/Unet50.png?raw=true)
+![alt text](https://github.com/hayashimasa/UNet-PyTorch/blob/main/visualization/UNet50.png?raw=true)
 
 This is a PyTorch implementation of the U-Net architecture.
 
