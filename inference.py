@@ -14,67 +14,18 @@ def parse_args():
         description='Make segmentation predicitons'
     )
     parser.add_argument(
-        '--model', type=str, default=None,
+        '--model', type=str, default='UNet50.pt',
         help='model to use for inference'
+    )
+    parser.add_argument(
+        '--visualize', action='store_true', default=False,
+        help='visualize the inference result'
     )
     args = parser.parse_args()
     return args
 
-def get_test_loader(mean, std, out_size, batch_size):
-    image_transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(mean, std),
-        transforms.Pad(30, padding_mode='reflect')
-    ])
-    mask_transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.CenterCrop(388)
-    ])
-
-    test_data = CellDataset(
-        image_transform=image_transform,
-        mask_transform=mask_transform,
-        data_type='test'
-    )
-
-    test_loader = DataLoader(
-        test_data,
-        batch_size=batch_size,
-        shuffle=False#,
-        # num_workers=args.num_workers
-    )
-    return test_loader
-
-def validate(model, device, data_loader, criterion, n_classes):
-    model.eval()
-    test_loss = 0
-    # n = len(data_loader.dataset)
-    # class_iou = [0.] * n_classes
-    # pixel_acc = 0.
-    pred = None
-    with torch.no_grad():
-        for sample in data_loader:
-            X = sample['image'].to(device)
-            y = sample['mask'].to(device)
-            y = y.squeeze(1) # remove channel dimension
-            y_pred = model(X)
-            # test_loss += criterion(y_pred, y.long()).item() # sum up batch loss
-
-            pred = torch.argmax(y_pred, dim=1)
-
-    return pred
-
-if __name__ == '__main__':
-    args = parse_args()
-    path = os.getcwd() + '/data/test-volume.tif'
-    image = io.imread(path)
-
-    print(image.shape)
-
-    im0 = image[1]
-
-    # plt.imshow(im)
-    # plt.show()
+def predict(image, model):
+    """Make prediction on image"""
     mean = 0.495
     std = 0.173
     image_transform = transforms.Compose([
@@ -82,29 +33,58 @@ if __name__ == '__main__':
         transforms.Normalize(mean, std),
         transforms.Pad(30, padding_mode='reflect')
     ])
-    im = image_transform(im0)
-    print(im.shape)
+    im = image_transform(image)
     im = im.view(1, *im.shape)
-    model_name = args.model if args.model else 'UNet25.pt'
-    checkpoint_path = os.getcwd() + f'/models/{model_name}'
+    model.eval()
+    y_pred = model(im)
+    pred = torch.argmax(y_pred, dim=1)[0]
+    return pred
+
+def visualize(image, pred, label=None):
+    """make visualization"""
+    n_plot = 2 if label is None else 3
+    fig = plt.figure()
+    ax = fig.add_subplot(1, n_plot, 1)
+    imgplot = plt.imshow(image)
+    ax.set_title('Image')
+    ax = fig.add_subplot(1, n_plot, 2)
+    imgplot = plt.imshow(pred)
+    ax.set_title('Prediction')
+    if n_plot > 2:
+        ax = fig.add_subplot(1, n_plot, 3)
+        imgplot = plt.imshow(label)
+        ax.set_title('Ground Truth')
+    fig.tight_layout()
+    plt.savefig(f'visualization/{args.model[:-3]}_validation.png')
+    plt.show()
+
+if __name__ == '__main__':
+    args = parse_args()
+
+    # load images and labels
+    path = os.getcwd() + '/data/train-volume.tif'
+    images = io.imread(path)
+    label_path = os.getcwd() + '/data/train-labels.tif'
+    labels = io.imread(label_path)
+    image = images[-1]
+    label = labels[-1]
+
+    # load model
+    checkpoint_path = os.getcwd() + f'/models/{args.model}'
     checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
     model = UNet(2)
     model.load_state_dict(checkpoint['model_state_dict'])
-    model.eval()
+    # make inference
+    pred = predict(image, model)
 
-    y_pred = model(im)
-    pred = torch.argmax(y_pred, dim=1)[0]
-    print(pred.shape)
-    dim = im0.shape
-    out_size = pred.shape[0]
-    cut = (dim[0] - out_size) // 2
-    im0 = im0[cut:cut+out_size, cut:cut+out_size]
-    fig = plt.figure()
-    ax = fig.add_subplot(1, 2, 1)
-    imgplot = plt.imshow(im0)
-    ax.set_title('Image')
-    ax = fig.add_subplot(1, 2, 2)
-    imgplot = plt.imshow(pred)
-    ax.set_title('Prediction')
-    plt.savefig(f'visualization/{args.model[:-3]}.png')
-    plt.show()
+    if args.visualize:
+        # crop images for visualization
+        dim = image.shape
+        out_size = pred.shape[0]
+        cut = (dim[0] - out_size) // 2
+        image = image[cut:cut+out_size, cut:cut+out_size]
+        label = label[cut:cut+out_size, cut:cut+out_size]
+        # visualize result
+        visualize(image, pred, label)
+
+
