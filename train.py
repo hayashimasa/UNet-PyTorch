@@ -16,27 +16,28 @@ from metric import iou, pix_acc
 from loss import Weighted_Cross_Entropy_Loss
 from augmentation import (
     DoubleCompose, DoubleToTensor,
-    DoubleHorizontalFlip, DoubleVerticalFlip, DoubleElasticTransform
+    DoubleHorizontalFlip, DoubleVerticalFlip, DoubleElasticTransform,
+    GaussianNoise
 )
 # from apex import amp, optimizers
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train image segmentation')
     parser.add_argument(
-        '--batch-size', type=int, default=1, metavar='N',
-        help='input batch size for training (default: 64)'
+        '--batch-size', type=int, default=3, metavar='N',
+        help='input batch size for training (default: 3)'
     )
     parser.add_argument(
-        '--test-batch-size', type=int, default=2, metavar='N',
-        help='input batch size for testing (default: 1000)'
+        '--test-batch-size', type=int, default=3, metavar='N',
+        help='input batch size for testing (default: 3)'
     )
     parser.add_argument(
-        '--epochs', type=int, default=5, metavar='N',
+        '--epochs', type=int, default=10, metavar='N',
         help='number of epochs to train (default: 10)'
     )
     parser.add_argument(
-        '--lr', type=float, default=0.001, metavar='LR',
-        help='learning rate (default: 0.001)'
+        '--lr', type=float, default=0.0001, metavar='LR',
+        help='learning rate (default: 0.0001)'
     )
     parser.add_argument(
         '--momentum', type=float, default=0.5, metavar='M',
@@ -73,7 +74,7 @@ def parse_args():
         help='how many batches to wait before logging training status'
     )
     parser.add_argument(
-        '--save-model', action='store_true', default=False,
+        '--save', action='store_true', default=False,
         help='save the current model'
     )
     parser.add_argument(
@@ -88,7 +89,6 @@ def parse_args():
     return args
 
 def get_train_loader(mean, std, out_size, batch_size, pct=.9):
-
     image_mask_transform = DoubleCompose([
         DoubleToTensor(),
         DoubleElasticTransform(alpha=250, sigma=10),
@@ -96,7 +96,9 @@ def get_train_loader(mean, std, out_size, batch_size, pct=.9):
         DoubleVerticalFlip()
     ])
     image_transform = transforms.Compose([
+        transforms.ColorJitter(brightness=0.4),
         transforms.Normalize(mean, std),
+        GaussianNoise(),
         transforms.Pad(30, padding_mode='reflect')
     ])
     mask_transform = transforms.CenterCrop(out_size)
@@ -198,7 +200,7 @@ def validate(model, device, data_loader, criterion, n_classes):
         + 'Average IOU score: {:.2f}, '.format(avg_iou)
         + 'Average pixel accuracy: {:.2f}\n'.format(pixel_acc)
     )
-    return test_loss, avg_iou, pixel_acc#, recalls, precisions, f1, weights
+    return test_loss, avg_iou, pixel_acc
 
 
 if __name__ == '__main__':
@@ -286,12 +288,13 @@ if __name__ == '__main__':
                 model_dict['metrics']['best']['IOU'] = test_iou
                 model_dict['metrics']['best']['pix_acc'] = test_pix_acc
                 model_dict['metrics']['best']['epoch'] = epoch
-                torch.save(model_dict, model_name)
+                if args.save_model:
+                    torch.save(model_dict, model_name)
     if args.tensorboard:
         writer.close()
-    print('training loss:', train_losses)
-    print('validation loss:', test_losses)
-    print('Intersection over Union:', test_ious)
+    # print('training loss:', train_losses)
+    # print('validation loss:', test_losses)
+    # print('Intersection over Union:', test_ious)
     print('Best IOU:', model_dict['metrics']['best']['IOU'])
     print('Pixel accuracy:', model_dict['metrics']['best']['pix_acc'])
 
