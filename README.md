@@ -10,9 +10,8 @@ https://arxiv.org/pdf/1505.04597.pdf
 
 # TODO
 1. Add comments to code
-2. Add results (metrics, sample images)
-3. Include sample images for data augmentation
-4. Use ResNet or other CNN architectures as encoder/decoder
+2. Include sample images for data augmentation
+3. Use ResNet or other CNN architectures as encoder/decoder
 
 # Introduction
 
