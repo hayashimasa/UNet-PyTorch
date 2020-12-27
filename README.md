@@ -39,7 +39,7 @@ Data are scarced in the field of medical imaging (only 30 supervised image in th
 
 Affine transformations and elastic deformation are simultaneously applied to both images and labels. Brightness adjustments and Gaussian noise are added to the input images.
 
-During training, all augmentations are chosen stochastically; for each image and label, the augmentation is a composite of all different combinations of transformations. For elastic deformation, the alpha parameter is chosen between 100-300, and the sigma parameter is chosen between 10-15.
+During training, all augmentations are chosen stochastically; for each image and label, the augmentation is a composite of different combinations of transformations. For elastic deformation, the alpha parameter is chosen between 100-300, and the sigma parameter is chosen between 10-15.
 
 The implementation of various data augmentation methods is in `augmentation.py`.
 
@@ -84,7 +84,7 @@ optional arguments:
   --tensorboard         record training log to Tensorboard
 ```
 
-The model was trained on 90% of the training data (27 images) and tested on 10% of the data (3 images) with the following parameters:
+The model was trained on 90% of the training data (27 images) and tested on 10% of the data (3 images) with the following hyperparameters:
 
 Epoch: 50
 
@@ -107,7 +107,7 @@ Pixel Accuracy: 90.87%
 ![alt text](https://github.com/hayashimasa/UNet-PyTorch/blob/main/visualization/pix_acc.png?raw=true)
 
 
-IOU and training loss stagnates after roughly 30 epochs and reached peak performance at the 33rd epoch. Different batch sizes and learning rates were experimented to train the model for up to 50 more epochs, which is a total of 100 epoch. Training loss is decreasing, but it doesn't yield any improvement in segmentation performance; the model is likely overtraining.
+IOU and training loss stagnate after roughly 30 epochs, and model reaches peak test performance at the 33rd epoch. Different batch sizes and learning rates were experimented to train the model for up to 50 more epochs, which is a total of 100 epochs. Training loss decreases but doesn't yield any improvement in segmentation performance; the model is likely overtraining.
 
 ![alt text](https://github.com/hayashimasa/UNet-PyTorch/blob/main/visualization/loss.png?raw=true)
 
