@@ -59,26 +59,6 @@ Medical images often contain highly imbalanced object classes; therefore, the au
 A vectorized implementation of the weighted function is in `celldata.py`.
 
 
-# Project File Organization
-```
-.
-├── LICENSE
-├── README.md
-├── data
-│   ├── test-volume.tif
-│   ├── train-labels.tif
-│   └── train-volume.tif
-├── celldata.py
-├── augmentation.py
-├── unet.py
-├── train.py
-├── loss.py
-├── metric.py
-├── inference.py
-└── visualization
-    └── unet25.png
-```
-
 # Training
 ```
 python train.py --epoch 50 --batch-size 3 --save
@@ -143,4 +123,26 @@ MICCAI.
 Ignacio Arganda-Carreras, Srinivas C. Turaga, Daniel R. Berger, Dan Ciresan, Alessandro Giusti, Luca M. Gambardella, Jürgen Schmidhuber, Dmtry Laptev, Sarversh Dwivedi, Joachim M. Buhmann, Ting Liu, Mojtaba Seyedhosseini, Tolga Tasdizen, Lee Kamentsky, Radim Burget, Vaclav Uher, Xiao Tan, Chanming Sun, Tuan D. Pham, Eran Bas, Mustafa G. Uzunbas, Albert Cardona, Johannes Schindelin, and H. Sebastian Seung.
 Crowdsourcing the creation of image segmentation algorithms for connectomics.
 Frontiers in Neuroanatomy, vol. 9, no. 142, 2015.
-<!-- # Results -->
+
+# Project File Organization
+```
+UNet-PyTorch
+├── LICENSE
+├── README.md
+├── data
+│   ├── test-volume.tif
+│   ├── train-labels.tif
+│   └── train-volume.tif
+├── celldata.py
+├── augmentation.py
+├── unet.py
+├── train.py
+├── loss.py
+├── metric.py
+├── inference.py
+└── visualization
+    ├── IOU.png
+    ├── UNet50.png
+    ├── loss.png
+    └── pix_acc.png
+```
