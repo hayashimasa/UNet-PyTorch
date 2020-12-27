@@ -8,6 +8,22 @@ import numpy as np
 from scipy.ndimage.interpolation import map_coordinates
 from scipy.ndimage.filters import gaussian_filter
 
+class GaussianNoise:
+    """Apply Gaussian noise to tensor."""
+
+    def __init__(self, mean=0., std=1., p=0.5):
+        self.mean = mean
+        self.std = std
+        self.p = p
+
+    def __call__(self, tensor):
+        noise = 0
+        if random.random() < self.p:
+            noise = torch.randn(tensor.size()) * self.std + self.mean
+        return tensor + noise
+
+    def __repr__(self):
+        return self.__class__.__name__ + f'(mean={self.mean}, std={self.std})'
 
 class DoubleToTensor:
     """Apply horizontal flips to both image and segmentation mask."""
@@ -32,7 +48,7 @@ class DoubleHorizontalFlip:
 
     def __call__(self, image, mask, weight=None):
         p = random.random()
-        if p > self.p:
+        if p < self.p:
             image = TF.hflip(image)
             mask = TF.hflip(mask)
         if weight is None:
@@ -52,7 +68,7 @@ class DoubleVerticalFlip:
 
     def __call__(self, image, mask, weight=None):
         p = random.random()
-        if p > self.p:
+        if p < self.p:
             image = TF.hflip(image)
             mask = TF.hflip(mask)
         if weight is None:
@@ -68,17 +84,26 @@ class DoubleElasticTransform:
     """Based on implimentation on
     https://gist.github.com/erniejunior/601cdf56d2b424757de5"""
 
-    def __init__(self, alpha, sigma, p=0.5, seed=None):
+    def __init__(self, alpha=250, sigma=10, p=0.5, seed=None, randinit=True):
         if not seed:
             seed = random.randint(1, 100)
         self.random_state = np.random.RandomState(seed)
         self.alpha = alpha
         self.sigma = sigma
         self.p = p
+        self.randinit = randinit
 
 
     def __call__(self, image, mask, weight=None):
-        if random.random() > self.p:
+        if random.random() < self.p:
+            if self.randinit:
+                seed = random.randint(1, 100)
+                self.random_state = np.random.RandomState(seed)
+                self.alpha = random.uniform(100, 300)
+                self.sigma = random.uniform(10, 15)
+                print(self.alpha)
+                print(self.sigma)
+
             dim = image.shape
             dx = self.alpha * gaussian_filter(
                 (self.random_state.rand(*dim[1:]) * 2 - 1),
@@ -176,10 +201,3 @@ if __name__ == '__main__':
     fig.tight_layout()
 
     plt.show()
-
-
-    # print(image_mask_transform)
-    # print(image_transform)
-
-    # print(type(X), X.shape)
-    # print(type(y), y.shape)
