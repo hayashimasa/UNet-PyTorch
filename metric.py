@@ -1,7 +1,20 @@
+"""Evaluation Metric
+
+author: Masahiro Hayashi
+
+This script defines metrics to evaluate model performance.
+"""
 import torch
 import numpy as np
 
 def pix_acc(outputs, targets, batch_size):
+    """Pixel accuracy
+
+    Args:
+        outputs (torch.nn.Tensor): prediction outputs
+        targets (torch.nn.Tensor): prediction targets
+        batch_size (int): size of minibatch
+    """
     acc = 0.
     for idx in range(batch_size):
         output = outputs[idx]
@@ -12,6 +25,14 @@ def pix_acc(outputs, targets, batch_size):
 
 
 def iou(outputs, targets, batch_size, n_classes):
+    """Intersection over union
+
+    Args:
+        outputs (torch.nn.Tensor): prediction outputs
+        targets (torch.nn.Tensor): prediction targets
+        batch_size (int): size of minibatch
+        n_classes (int): number of segmentation classes
+    """
     eps = 1e-6
     class_iou = np.zeros(n_classes)
     for idx in range(batch_size):
@@ -29,7 +50,9 @@ def iou(outputs, targets, batch_size, n_classes):
 
     return class_iou
 
+###############################################################################
 
+###############################################################################
 
 if __name__ == '__main__':
     x = torch.randint(high=2, size=(3,1,5,5))

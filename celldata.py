@@ -1,3 +1,10 @@
+"""Cell Dataset
+
+author: Masahiro Hayashi
+
+This script defines the CellDataset object that preprocess the ISBI 2012
+EM cell dataset and allows user to retrieve sample images using an iterator.
+"""
 import os
 from tqdm import tqdm
 
@@ -17,13 +24,14 @@ from augmentation import (
 )
 
 class CellDataset(Dataset):
-    """ISBI 2012 EM Cell dataset."""
+    """ISBI 2012 EM Cell dataset.
+    """
 
     def __init__(
         self, root_dir=None,
         image_mask_transform=None, image_transform=None, mask_transform=None,
         pct=.9, data_type='train', in_size=572, out_size=388,
-        w0=10, sigma=5, weight_map_dir=None
+        # w0=10, sigma=5, weight_map_dir=None
     ):
         """
         Args:
@@ -33,7 +41,8 @@ class CellDataset(Dataset):
             mask_transform (callable, optional): Optional transform to be applied on mask labels.
             pct (float): percentage of data to use as training data
             data_type (string): either 'train' or 'test'
-
+            in_size (int): input size of image
+            out_size (int): output size of segmentation map
         """
         self.root_dir = os.getcwd() if not root_dir else root_dir
         path = os.path.join(self.root_dir, 'data')
@@ -83,6 +92,8 @@ class CellDataset(Dataset):
         return self.images.shape[0]
 
     def __getitem__(self, idx):
+        """Returns a image sample from the dataset
+        """
         image = self.images[idx]
         mask = self.masks[idx]
         weight = self.weight_map[idx]
@@ -122,6 +133,9 @@ class CellDataset(Dataset):
         return weight
 
     def _get_boundary_weight(self, target, w0=10, sigma=5):
+        """This implementation is very computationally intensive!
+        about 30 minutes per 512x512 image
+        """
         print('Calculating boundary weight...')
         n, H, W = target.shape
         weight = torch.zeros(n, H, W)
@@ -140,6 +154,9 @@ class CellDataset(Dataset):
             weight[i] = torch.Tensor(w0 * np.exp(-dsum**2 / (2*sigma**2)))
         return weight
 
+###############################################################################
+# For testing
+###############################################################################
 def get_dataloader(mean, std, out_size, batch_size):
     image_mask_transform = DoubleCompose([
         DoubleToTensor(),

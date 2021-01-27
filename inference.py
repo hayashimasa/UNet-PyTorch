@@ -1,3 +1,9 @@
+"""Model Inference
+
+author: Masahiro Hayashi
+
+This script allows users to make inference and visualize results.
+"""
 import os
 import argparse
 import torch

@@ -1,3 +1,10 @@
+"""Model Trainer
+
+author: Masahiro Hayashi
+
+This script defines custom image transformations that simultaneously transform
+both images and segmentation masks.
+"""
 import torchvision.transforms.functional as TF
 # from torchvision.transforms import Compose
 from torchvision import transforms
@@ -101,8 +108,8 @@ class DoubleElasticTransform:
                 self.random_state = np.random.RandomState(seed)
                 self.alpha = random.uniform(100, 300)
                 self.sigma = random.uniform(10, 15)
-                print(self.alpha)
-                print(self.sigma)
+                # print(self.alpha)
+                # print(self.sigma)
 
             dim = image.shape
             dx = self.alpha * gaussian_filter(
@@ -146,6 +153,9 @@ class DoubleCompose(transforms.Compose):
             image, mask, weight = t(image, mask, weight)
         return image, mask, weight
 
+###############################################################################
+# For testing
+###############################################################################
 if __name__ == '__main__':
     # import torch
     X = np.random.rand(512, 512, 1)

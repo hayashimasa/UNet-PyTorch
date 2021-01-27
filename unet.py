@@ -1,4 +1,11 @@
 # -*- coding: utf-8 -*-
+"""U-Net
+
+author: Masahiro Hayashi
+
+This script defines the model architecture of U-Net.
+"""
+
 import torch
 import torch.nn as nn
 
@@ -28,10 +35,7 @@ class UNet(torch.nn.Module):
         )
 
     def forward(self, x):
-        """
-        In the forward function we accept a Tensor of input data and we must return
-        a Tensor of output data. We can use Modules defined in the constructor as
-        well as arbitrary operators on Tensors.
+        """Performs a forward pass through the network
         """
         xs = []
         for block in self.contract_blocks:
@@ -50,12 +54,16 @@ class UNet(torch.nn.Module):
         return y_pred
 
     def concat(self, x, y):
+        """Crop and concatenate two feature maps
+        """
         dw = (x.size()[2] - y.size()[2]) // 2
         dh = (x.size()[3] - y.size()[2]) // 2
         x = x[:, :, dw:x.size()[2]-dw, dh:x.size()[3]-dh]
         return torch.cat((x, y), 1)
 
     def contract(self):
+        """Define contraction block in U-Net
+        """
         blocks = []
         old = 1
         for i, size in enumerate(self.filter_sizes):
@@ -76,6 +84,8 @@ class UNet(torch.nn.Module):
         return blocks
 
     def expand(self):
+        """Define expansion block in U-Net
+        """
         blocks = []
         expand_filters = self.filter_sizes[self.n_block-2::-1]
         old = self.filter_sizes[-1]
@@ -97,6 +107,9 @@ class UNet(torch.nn.Module):
 
         return blocks
 
+###############################################################################
+# For testing
+###############################################################################
 if __name__ == "__main__":
     # A full forward pass
     im = torch.randn(1, 1, 572, 572)
