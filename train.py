@@ -1,5 +1,12 @@
+"""Model Training
+
+author: Masahiro Hayashi
+
+This script defines the training process of the segmentation model.
+"""
 import os
 import argparse
+
 import torch
 from torch import nn, optim, DoubleTensor
 from torch import cuda
@@ -22,6 +29,7 @@ from augmentation import (
 # from apex import amp, optimizers
 
 def parse_args():
+    """parse command line arguments"""
     parser = argparse.ArgumentParser(description='Train image segmentation')
     parser.add_argument(
         '--batch-size', type=int, default=3, metavar='N',
@@ -42,6 +50,10 @@ def parse_args():
     parser.add_argument(
         '--momentum', type=float, default=0.5, metavar='M',
         help='SGD momentum (default: 0.5)'
+    )
+    parser.add_argument(
+        '--n-classes', type=int, default=2,
+        help='number of segmentation classes'
     )
     parser.add_argument(
         '--num_workers', type=int, default=6,
@@ -89,6 +101,14 @@ def parse_args():
     return args
 
 def get_train_loader(mean, std, out_size, batch_size, pct=.9):
+    """Initialize Dataloader for training set
+
+        mean (float): mean of pixel values
+        std (float): standard deviation of pixel values
+        out_size (int): dimension of segmentation map (out_size x out_size)
+        batch_size (int): number of samples to load for each iteration
+        pct (float): percentage of data to use for training (0 < pct <= 1)
+    """
     image_mask_transform = DoubleCompose([
         DoubleToTensor(),
         DoubleElasticTransform(alpha=250, sigma=10),
@@ -117,6 +137,13 @@ def get_train_loader(mean, std, out_size, batch_size, pct=.9):
     return train_loader
 
 def get_test_loader(mean, std, out_size, batch_size):
+    """Initialize Dataloader for validation set
+
+        mean (float): mean of pixel values
+        std (float): standard deviation of pixel values
+        out_size (int): dimension of segmentation map (out_size x out_size)
+        batch_size (int): number of samples to load for each iteration
+    """
     image_transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(mean, std),
@@ -140,10 +167,20 @@ def get_test_loader(mean, std, out_size, batch_size):
     )
     return test_loader
 
-def train(model, device, train_loader, optimizer, criterion, epoch):
+def train(model, device, data_loader, optimizer, criterion, epoch):
+    """train model for one epoch
+
+    Args:
+        model (torch.nn.Module): model to train
+        device (str): device to train model ('cpu' or 'cuda')
+        data_loader (object): iterator to load data
+        optimizer (torch.nn.optim): stochastic optimzation strategy
+        criterion (torch.nn.Module): loss function
+        epoch (int): current epoch
+    """
     model.train()
     loss = 0.
-    for step, sample in enumerate(train_loader):
+    for step, sample in enumerate(data_loader):
         # forward pass
         X = sample['image'].to(device)
         y = sample['mask'].to(device)
@@ -162,14 +199,23 @@ def train(model, device, train_loader, optimizer, criterion, epoch):
         if step % log_interval == 0:
             print(
                 'Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, (step+1) * len(X), len(train_loader.dataset),
-                100. * (step+1) / len(train_loader), loss.item())
+                epoch, (step+1) * len(X), len(data_loader.dataset),
+                100. * (step+1) / len(data_loader), loss.item())
             )
         # break
 
     return loss.item()
 
 def validate(model, device, data_loader, criterion, n_classes):
+    """Evaluate model performance with validation data
+
+    Args:
+        model (torch.nn.Module): model to evaluate
+        device (str): device to evaluate model ('cpu' or 'cuda')
+        data_loader (object): iterator to load data
+        criterion (torch.nn.Module): loss function
+        n_classes (int): number of segmentation classes
+    """
     model.eval()
     test_loss = 0
     n = len(data_loader.dataset)
@@ -202,99 +248,108 @@ def validate(model, device, data_loader, criterion, n_classes):
     )
     return test_loss, avg_iou, pixel_acc
 
+def initialize_model(args):
+    """Initialize model checkpoint dictionary for storing training progress
+
+    Args:
+        args (object):
+            epoch (int): total number of epochs to train model
+            n_classes (int): number of segmentation classes
+    """
+    model_dict = {
+        'total_epoch': args.epochs,
+        'n_classes': args.n_classes,
+        'model_state_dict': None,
+        'optimizer_state_dict': None,
+        'train_loss': list(),
+        'test_loss': list(),
+        'metrics': {
+            'IOU': list(),
+            'pixel_acc': 0.,
+            'best': {
+                'IOU': 0.,
+                'pixel_acc': 0.,
+                'epoch': 0
+            }
+        }
+    }
+    return model_dict
+
+def get_model(args, device):
+    """Intialize or load model checkpoint and intialize model and optimizer
+
+    Args:
+        args (object):
+            model (str): filename of model to load
+                (initialize new model if none is given)
+        device (str): device to train and evaluate model ('cpu' or 'cuda')
+    """
+    if args.model:
+        # Load model checkpoint
+        model_path = os.path.join(os.getcwd(), f'models/{args.model}')
+        model_dict = torch.load(model_path)
+    else:
+        model_dict = initialize_model(args)
+    n_classes = model_dict['n_classes']
+    model = UNet(n_classes).cuda() if device == 'cuda' else UNet(n_classes)
+    optimizer = optim.Adam(model.parameters(), args.lr)
+    if args.model:
+        model.load_state_dict(model_dict['model_state_dict'])
+        optimizer.load_state_dict(model_dict['optimizer_state_dict'])
+    return model, optimizer, model_dict
 
 if __name__ == '__main__':
     args = parse_args()
     if args.tensorboard:
         writer = SummaryWriter()
+    # initialize model
     device = (
         'cuda' if torch.cuda.is_available() and not args.no_cuda else 'cpu'
     )
-    n_classes = 2
-    model = UNet(n_classes).cuda() if device == 'cuda' else UNet(n_classes)
+    model, optimizer, model_dict = get_model(args, device)
+    # initialize dataloader
     mean = 0.495
     std = 0.173
-    out_size = 388
+    out_size = 388 # output dimension of segmentation map
     train_loader = get_train_loader(mean, std, out_size, args.batch_size)
     test_loader = get_test_loader(mean, std, out_size, args.test_batch_size)
-
-    # criterion = nn.CrossEntropyLoss()
+    # define loss function
     criterion = Weighted_Cross_Entropy_Loss()
-    optimizer = optim.Adam(model.parameters(), args.lr)
-
-    if args.model:
-        # Load model checkpoint
-        model_path = os.path.join(os.getcwd(), f'models/{args.model}')
-        model_dict = torch.load(model_path)
-        model.load_state_dict(model_dict['model_state_dict'])
-        optimizer.load_state_dict(model_dict['optimizer_state_dict'])
-        train_losses = model_dict['train_loss']
-        test_losses = model_dict['test_loss']
-        test_ious = model_dict['metrics']['IOU']
-        test_pix_accs = model_dict['metrics']['pixel_acc']
-        start_epoch = model_dict['total_epoch'] + 1
-        n_epoch = model_dict['total_epoch'] + args.epochs
-    else:
-        start_epoch = 1
-        n_epoch = args.epochs
-        train_losses = []
-        test_losses = []
-        test_ious = []
-        test_pix_accs = []
-        model_dict = {
-            'total_epoch': n_epoch,
-            'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-            'train_loss': train_losses,
-            'test_loss': test_losses,
-            'metrics': {
-                'IOU': test_ious,
-                'pixel_acc': test_pix_accs,
-                'best': {
-                    'IOU': 0.,
-                    'pixel_acc': 0.,
-                    'epoch': 0
-                }
-
-            }
-        }
+    # train and evaluate model
+    start_epoch = 1 if not args.model else model_dict['total_epoch'] + 1
+    n_epoch = start_epoch + args.epochs - 1
     model_name = f'models/{model.name}{n_epoch}.pt'
     for epoch in range(start_epoch, n_epoch+1):
         train_loss = train(
             model, device, train_loader, optimizer, criterion, epoch
         )
-        train_losses.append(train_loss)
         test_loss, test_iou, test_pix_acc = validate(
             model, device, test_loader, criterion, n_classes
         )
-        test_losses.append(test_loss)
-        test_ious.append(test_iou)
-        test_pix_accs.append(test_pix_acc)
-
+        # update tensorboard
         if args.tensorboard:
             writer.add_scalar('Loss/train', train_loss, epoch)
             writer.add_scalar('Loss/test', test_loss, epoch)
             writer.add_scalar('IOU/test', test_iou, epoch)
             writer.add_scalar('Pixel_Accuracy/test', test_pix_acc, epoch)
-
-        model_dict['train_losses'] = train_losses
-        model_dict['test_losses'] = test_losses
-        model_dict['metrics']['IOU'] = test_ious
-        model_dict['metrics']['pix_acc'] = test_pix_accs
+        # record training progress
+        model_dict['train_losses'].append(train_losses)
+        model_dict['test_losses'].append(test_losses)
+        model_dict['metrics']['IOU'].append(test_ious)
+        model_dict['metrics']['pix_acc'].append(test_pix_accs)
         if epoch == 1 or test_iou > model_dict['metrics']['best']['IOU']:
-            if args.save_model:
-                model_dict['model_state_dict'] = model.state_dict()
-                model_dict['optimizer_state_dict'] = optimizer.state_dict()
-                model_dict['metrics']['best']['IOU'] = test_iou
-                model_dict['metrics']['best']['pix_acc'] = test_pix_acc
-                model_dict['metrics']['best']['epoch'] = epoch
-                if args.save_model:
-                    torch.save(model_dict, model_name)
+            model_dict['model_state_dict'] = model.state_dict()
+            model_dict['optimizer_state_dict'] = optimizer.state_dict()
+            model_dict['metrics']['best']['IOU'] = test_iou
+            model_dict['metrics']['best']['pix_acc'] = test_pix_acc
+            model_dict['metrics']['best']['epoch'] = epoch
+        if args.save_model:
+            torch.save(model_dict, model_name)
     if args.tensorboard:
         writer.close()
+    # print model statistics
     # print('training loss:', train_losses)
     # print('validation loss:', test_losses)
     # print('Intersection over Union:', test_ious)
     print('Best IOU:', model_dict['metrics']['best']['IOU'])
     print('Pixel accuracy:', model_dict['metrics']['best']['pix_acc'])
-
