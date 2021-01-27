@@ -9,9 +9,8 @@ This is a PyTorch implementation of the U-Net architecture.
 https://arxiv.org/pdf/1505.04597.pdf
 
 # TODO
-1. Add comments to code
-2. Include sample images for data augmentation
-3. Use ResNet or other CNN architectures as encoder/decoder
+1. Include sample images for data augmentation
+2. Use ResNet or other CNN architectures as encoder/decoder
 
 # Introduction
 
