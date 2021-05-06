@@ -28,6 +28,7 @@ from augmentation import (
 )
 # from apex import amp, optimizers
 
+
 def parse_args():
     """parse command line arguments"""
     parser = argparse.ArgumentParser(description='Train image segmentation')
@@ -100,6 +101,7 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+
 def get_train_loader(mean, std, out_size, batch_size, pct=.9):
     """Initialize Dataloader for training set
 
@@ -136,6 +138,7 @@ def get_train_loader(mean, std, out_size, batch_size, pct=.9):
     )
     return train_loader
 
+
 def get_test_loader(mean, std, out_size, batch_size):
     """Initialize Dataloader for validation set
 
@@ -167,6 +170,7 @@ def get_test_loader(mean, std, out_size, batch_size):
     )
     return test_loader
 
+
 def train(model, device, data_loader, optimizer, criterion, epoch):
     """train model for one epoch
 
@@ -185,7 +189,7 @@ def train(model, device, data_loader, optimizer, criterion, epoch):
         X = sample['image'].to(device)
         y = sample['mask'].to(device)
         w = sample['weight'].to(device)
-        y = y.squeeze(1).long() # remove channel dimension
+        y = y.squeeze(1).long()  # remove channel dimension
         y_pred = model(X)
 
         # back propogation
@@ -199,12 +203,14 @@ def train(model, device, data_loader, optimizer, criterion, epoch):
         if step % log_interval == 0:
             print(
                 'Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, (step+1) * len(X), len(data_loader.dataset),
-                100. * (step+1) / len(data_loader), loss.item())
+                    epoch, (step+1) * len(X), len(data_loader.dataset),
+                    100. * (step+1) / len(data_loader), loss.item()
+                )
             )
         # break
 
     return loss.item()
+
 
 def validate(model, device, data_loader, criterion, n_classes):
     """Evaluate model performance with validation data
@@ -226,9 +232,9 @@ def validate(model, device, data_loader, criterion, n_classes):
             X = sample['image'].to(device)
             y = sample['mask'].to(device)
             w = sample['weight'].to(device)
-            y = y.squeeze(1).long() # remove channel dimension
+            y = y.squeeze(1).long()  # remove channel dimension
             y_pred = model(X)
-            test_loss += criterion(y_pred, y, w).item() # sum up batch loss
+            test_loss += criterion(y_pred, y, w).item()  # sum up batch loss
             pred = torch.argmax(y_pred, dim=1)
             batch_size = X.shape[0]
             pred = pred.view(batch_size, -1)
@@ -248,6 +254,7 @@ def validate(model, device, data_loader, criterion, n_classes):
     )
     return test_loss, avg_iou, pixel_acc
 
+
 def initialize_model(args):
     """Initialize model checkpoint dictionary for storing training progress
 
@@ -265,7 +272,7 @@ def initialize_model(args):
         'test_loss': list(),
         'metrics': {
             'IOU': list(),
-            'pixel_acc': 0.,
+            'pix_acc': list(),
             'best': {
                 'IOU': 0.,
                 'pixel_acc': 0.,
@@ -274,6 +281,7 @@ def initialize_model(args):
         }
     }
     return model_dict
+
 
 def get_model(args, device):
     """Intialize or load model checkpoint and intialize model and optimizer
@@ -298,6 +306,7 @@ def get_model(args, device):
         optimizer.load_state_dict(model_dict['optimizer_state_dict'])
     return model, optimizer, model_dict
 
+
 if __name__ == '__main__':
     args = parse_args()
     if args.tensorboard:
@@ -310,7 +319,7 @@ if __name__ == '__main__':
     # initialize dataloader
     mean = 0.495
     std = 0.173
-    out_size = 388 # output dimension of segmentation map
+    out_size = 388  # output dimension of segmentation map
     train_loader = get_train_loader(mean, std, out_size, args.batch_size)
     test_loader = get_test_loader(mean, std, out_size, args.test_batch_size)
     # define loss function
@@ -318,13 +327,16 @@ if __name__ == '__main__':
     # train and evaluate model
     start_epoch = 1 if not args.model else model_dict['total_epoch'] + 1
     n_epoch = start_epoch + args.epochs - 1
+    model_path = os.getcwd() + '/models'
+    if not os.path.isdir(model_path):
+        os.mkdir(model_path)
     model_name = f'models/{model.name}{n_epoch}.pt'
-    for epoch in range(start_epoch, n_epoch+1):
+    for epoch in range(start_epoch, n_epoch + 1):
         train_loss = train(
             model, device, train_loader, optimizer, criterion, epoch
         )
         test_loss, test_iou, test_pix_acc = validate(
-            model, device, test_loader, criterion, n_classes
+            model, device, test_loader, criterion, args.n_classes
         )
         # update tensorboard
         if args.tensorboard:
@@ -333,17 +345,17 @@ if __name__ == '__main__':
             writer.add_scalar('IOU/test', test_iou, epoch)
             writer.add_scalar('Pixel_Accuracy/test', test_pix_acc, epoch)
         # record training progress
-        model_dict['train_losses'].append(train_losses)
-        model_dict['test_losses'].append(test_losses)
-        model_dict['metrics']['IOU'].append(test_ious)
-        model_dict['metrics']['pix_acc'].append(test_pix_accs)
+        model_dict['train_loss'].append(train_loss)
+        model_dict['test_loss'].append(test_loss)
+        model_dict['metrics']['IOU'].append(test_iou)
+        model_dict['metrics']['pix_acc'].append(test_pix_acc)
         if epoch == 1 or test_iou > model_dict['metrics']['best']['IOU']:
             model_dict['model_state_dict'] = model.state_dict()
             model_dict['optimizer_state_dict'] = optimizer.state_dict()
             model_dict['metrics']['best']['IOU'] = test_iou
             model_dict['metrics']['best']['pix_acc'] = test_pix_acc
             model_dict['metrics']['best']['epoch'] = epoch
-        if args.save_model:
+        if args.save:
             torch.save(model_dict, model_name)
     if args.tensorboard:
         writer.close()

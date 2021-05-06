@@ -9,12 +9,14 @@ This script defines the model architecture of U-Net.
 import torch
 import torch.nn as nn
 
+
 class UNet(torch.nn.Module):
     """Implementation of the U-Net architecture
     "U-Net: Convolutional Networks for Biomedical Image Segmentation"
     by Olaf Ronneberger, Philipp Fischer, and Thomas Brox (2015)
     https://arxiv.org/pdf/1505.04597.pdf
     """
+
     def __init__(self, n_classes, batch_norm=True):
         """
         """
@@ -43,7 +45,7 @@ class UNet(torch.nn.Module):
             xs.append(new_x)
             x = new_x
 
-       	for i, block in enumerate(self.expand_blocks):
+        for i, block in enumerate(self.expand_blocks):
             x = block['up'](x)
             k = self.n_block - i - 2
             x = self.concat(xs[k], x)
@@ -58,7 +60,7 @@ class UNet(torch.nn.Module):
         """
         dw = (x.size()[2] - y.size()[2]) // 2
         dh = (x.size()[3] - y.size()[2]) // 2
-        x = x[:, :, dw:x.size()[2]-dw, dh:x.size()[3]-dh]
+        x = x[:, :, dw:x.size()[2] - dw, dh:x.size()[3] - dh]
         return torch.cat((x, y), 1)
 
     def contract(self):
@@ -87,7 +89,7 @@ class UNet(torch.nn.Module):
         """Define expansion block in U-Net
         """
         blocks = []
-        expand_filters = self.filter_sizes[self.n_block-2::-1]
+        expand_filters = self.filter_sizes[self.n_block - 2::-1]
         old = self.filter_sizes[-1]
         for i, size in enumerate(expand_filters):
             up = nn.ConvTranspose2d(old, size, kernel_size=2, stride=2)
@@ -107,6 +109,7 @@ class UNet(torch.nn.Module):
 
         return blocks
 
+
 ###############################################################################
 # For testing
 ###############################################################################
@@ -119,7 +122,7 @@ if __name__ == "__main__":
     import time
     t = time.time()
     x = model(im)
-    print(time.time()-t)
+    print(time.time() - t)
     print(x.shape)
     del model
     del x

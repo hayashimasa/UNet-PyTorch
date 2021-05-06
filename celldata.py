@@ -23,6 +23,7 @@ from augmentation import (
     DoubleHorizontalFlip, DoubleVerticalFlip, DoubleElasticTransform
 )
 
+
 class CellDataset(Dataset):
     """ISBI 2012 EM Cell dataset.
     """
@@ -31,14 +32,17 @@ class CellDataset(Dataset):
         self, root_dir=None,
         image_mask_transform=None, image_transform=None, mask_transform=None,
         pct=.9, data_type='train', in_size=572, out_size=388,
-        # w0=10, sigma=5, weight_map_dir=None
+        w0=10, sigma=5, weight_map_dir=None
     ):
         """
         Args:
             root_dir (string): Directory with all the images.
-            image_mask_transform (callable, optional): Optional transform to be applied on images and mask label simultaneuosly.
-            image_transform (callable, optional): Optional transform to be applied on images.
-            mask_transform (callable, optional): Optional transform to be applied on mask labels.
+            image_mask_transform (callable, optional): Optional
+            transform to be applied on images and mask label simultaneuosly.
+            image_transform (callable, optional): Optional
+            transform to be applied on images.
+            mask_transform (callable, optional): Optional
+            transform to be applied on mask labels.
             pct (float): percentage of data to use as training data
             data_type (string): either 'train' or 'test'
             in_size (int): input size of image
@@ -72,7 +76,6 @@ class CellDataset(Dataset):
             self.images = io.imread(self.train_path)[n:]
             self.masks = io.imread(self.mask_path)[n:]
 
-
         self.mean = np.average(self.images)
         self.std = np.std(self.images)
         self.w0 = w0
@@ -82,7 +85,7 @@ class CellDataset(Dataset):
         #     print(self.weight_map)
         # if not weight_map_dir:
         self.weight_map = self._get_weights(self.w0, self.sigma)
-            # torch.save(self.weight_map, 'weight_map.pt')
+        # torch.save(self.weight_map, 'weight_map.pt')
 
         self.in_size = in_size
         self.out_size = out_size
@@ -117,14 +120,14 @@ class CellDataset(Dataset):
     def _get_weights(self, w0, sigma):
         class_weight = self._get_class_weight(self.masks)
         # boundary_weight = self._get_boundary_weight(self.masks, w0, sigma)
-        return class_weight #+ boundary_weight
+        return class_weight  # + boundary_weight
 
     def _get_class_weight(self, target):
         n, H, W = target.shape
         weight = torch.zeros(n, H, W)
         for i in range(self.n_classes):
             i_t = i * torch.ones([n, H, W], dtype=torch.long)
-            loc_i = (torch.Tensor(target//255) == i_t).to(torch.long)
+            loc_i = (torch.Tensor(target // 255) == i_t).to(torch.long)
             count_i = loc_i.view(n, -1).sum(1)
             total = H * W
             weight_i = total / count_i
@@ -143,16 +146,17 @@ class CellDataset(Dataset):
         ix, iy = np.c_[ix.ravel(), iy.ravel()].T
         for i, t in enumerate(tqdm(target)):
             boundary = find_boundaries(t, mode='inner')
-            bound_x, bound_y = np.where(boundary == True)
+            bound_x, bound_y = np.where(boundary is True)
             # broadcast boundary x pixel
-            dx = (ix.reshape(1,-1) - bound_x.reshape(-1,1)) ** 2
-            dy = (iy.reshape(1,-1) - bound_y.reshape(-1,1)) ** 2
+            dx = (ix.reshape(1, -1) - bound_x.reshape(-1, 1)) ** 2
+            dy = (iy.reshape(1, -1) - bound_y.reshape(-1, 1)) ** 2
             d = dx + dy
             # distance to 2 closest cells
-            d2 = np.sqrt(np.partition(d, 2, axis=0)[:2,])
+            d2 = np.sqrt(np.partition(d, 2, axis=0)[:2, ])
             dsum = d2.sum(0).reshape(H, W)
-            weight[i] = torch.Tensor(w0 * np.exp(-dsum**2 / (2*sigma**2)))
+            weight[i] = torch.Tensor(w0 * np.exp(-dsum**2 / (2 * sigma**2)))
         return weight
+
 
 ###############################################################################
 # For testing
@@ -165,12 +169,12 @@ def get_dataloader(mean, std, out_size, batch_size):
         DoubleVerticalFlip(),
     ])
 
-    image_transform = transforms.Compose([
-        transforms.Normalize(mean, std),
-        transforms.Pad(30, padding_mode='reflect')
-    ])
+    # image_transform = transforms.Compose([
+    #     transforms.Normalize(mean, std),
+    #     transforms.Pad(30, padding_mode='reflect')
+    # ])
 
-    mask_transform = transforms.CenterCrop(388)
+    # mask_transform = transforms.CenterCrop(388)
 
     data = CellDataset(
         image_mask_transform=image_mask_transform,
@@ -187,6 +191,7 @@ def get_dataloader(mean, std, out_size, batch_size):
     )
     return loader
 
+
 def visualize(image, mask):
     fig = plt.figure()
     ax = fig.add_subplot(1, 2, 1)
@@ -197,6 +202,7 @@ def visualize(image, mask):
     ax.set_title('Label')
 
     plt.show()
+
 
 if __name__ == '__main__':
     # print()
@@ -211,10 +217,6 @@ if __name__ == '__main__':
         # for i in range(X.shape[0]):
         #     image = X[i][0]
         #     mask = y[i][0]
-            # visualize(image, mask)
+        #     visualize(image, mask)
 
         break
-
-
-
-
